@@ -1,0 +1,377 @@
+"""
+Created on Tue May 26 17:03:25 2020
+
+@author: dawig
+"""
+"""
+Caution! Some abilities in numpy have been deprecated.  This would need to be modified to run on current versions.
+"""
+import numpy as np
+import matplotlib.pyplot as plt
+import statistics as stats
+from quicksort import Quicksort
+
+
+
+class RationalFunctionGraph():
+    """ This class graphs polynomials and rational functions, finding 
+        appropriate windows to display them.  It allows zooming and shifting 
+        to see different views.
+        Inputs to the class are of the form:
+        [root number, denominator root number, a multiplyer, roots, den. roots]
+                                           , [y zoom, x zoom, y shift, x shift]
+        [1,1,0,0] is base case for the second array.
+    """
+    def __init__(self, array):
+        self.__array_length_flag = 1                                           #checks for appropriate input
+        self.__domain_flag = 1
+        self.__array = array[0]                                                #holds instructions
+        self.__zoom = array[1]                                                 #allows image to be zoomed - y zoom, x zoom, y move, x move
+        self.__X = []
+        self.__Y = []
+        self.__Y_tester = []
+        self.__Y_denominator = []
+        self.__plot_min = -10
+        self.__plot_max = 10
+        self.__plot_left = -10
+        self.__plot_right = 10
+        self.__asymptote_list = []
+        self.__removed_point = []
+        self.q = Quicksort()
+    def graph_print(self):
+        self.__array_length_checker()
+        self.__domain_checker()
+        self.__divide_by_zero_remover()                                        #creates gaps where holes would be and at asymptotes
+        self.__equation_builder()
+        self.__plot_window() 
+        #self.__plot_zoom(self.zoom[0], self.zoom[1])
+    def __array_length_checker(self):
+        if len(self.__array) != self.__array[0] + self.__array[1] + 3:
+            self.__array_length_flag = 0
+            print("There were too many or too few values passed into the class")
+    def __domain_checker(self):                                                  #Our standard width is from -20 to 20.  
+        for value in self.__array[3:-1]:                                         #This filters out zeros elsewhere.
+            if value > 20 or value < -20:
+                print("Roots must be between -20 and 20")
+                self.__domain_flag = 0
+        return self.__domain_flag
+    def __divide_by_zero_remover(self):
+        close_list = [10**-6, 10**-4, 10**-3, 10**-2,\
+                                                  .02, .04, .06, .07, .08, .09]# Adding this will allow asymptotes to extend vertically and look smooth
+        self.__asymptote_list = self.__array[3+self.__array[0]:]
+        if len(self.__array[3+self.__array[0]:]) > 1:
+            self.__asymptote_list = self.q.sort_remove_repeats(self.__asymptote_list)
+        for root in self.__asymptote_list:
+            if root in self.__array[3:3+self.__array[0]]:
+                self.__removed_point.append(root)
+        for previous_denom_root, denom_root in\
+            zip([-50] + self.__asymptote_list, self.__asymptote_list + [50]):
+            self.__X.append\
+                                      (np.linspace(previous_denom_root + .1,\
+                    denom_root - .1, 120 * (denom_root-previous_denom_root),\
+                                                       endpoint=True).tolist())     
+            if previous_denom_root not in self.__removed_point:
+                self.__X[-1] =\
+                         [previous_denom_root + close for close in close_list]\
+                                                                 + self.__X[-1]            
+            close_list.reverse()
+            if denom_root not in self.__removed_point:
+                self.__X[-1] =\
+                         self.__X[-1] +\
+                         [denom_root - close for close in close_list]
+            close_list.reverse()
+    def __equation_builder(self): 
+        for interval in range(len(self.__X)):
+            self.__Y.append(np.repeat(self.__array[2], len(self.__X[interval]), 0)) #set an a value for the numerator's equation
+            #for coefficient in range(3, self.__array[0] + 3):
+             #   self.__Y[interval] = self.__Y[interval] * (self.__X[interval] - self.__array[coefficient])  #build up the y value from the roots i.e. x-root
+            self.__Y[interval] = self.__polynomial_builder(self.__array[2:3 + self.__array[0]], interval)#numerator
+            if self.__array[1] > 0:                                                  # if zero, we only make a polynomial    
+                self.__Y_denominator = self.__polynomial_builder\
+                                 ([1] + self.__array[3 + self.__array[0]:], interval)#denominator
+            
+                self.__Y[interval] = self.__Y[interval] / self.__Y_denominator
+    def __polynomial_builder(self, coefficients, interval):
+        temp_y_vals = np.repeat(coefficients[0], len(self.__X[interval]), 0)            #set an a value for the "a" coefficient
+        for coefficient in coefficients[1:]:                                   #coefficients[0] is the degree; coefficients[1] is the "a" value
+            temp_y_vals = temp_y_vals * (self.__X[interval]\
+                             - np.repeat(coefficient, len(self.__X[interval])))
+        return temp_y_vals
+    def __plot_window(self):
+        if self.__array_length_flag == 0 or  self.__domain_flag == 0:
+            return 0
+        y_window_list = []
+        zeros = self.q.sort(self.__array[3:3+self.__array[0]]\
+                                                       + self.__asymptote_list)
+        for lagged_item, item in zip ([zeros[0] - .5]\
+                                            + zeros, zeros + [zeros[-1] + .5]):
+            test_area = stats.mean([lagged_item,item])
+            if test_area not in self.__removed_point:
+                function_segment = [x for x in range(len(self.__X)) if self.__X[x][0] < test_area < self.__X[x][-1]][0]
+            test_list = list(np.where(abs(np.array(self.__X[function_segment]) -test_area) < .02)[0])
+            for item in test_list:                                             #these will be tested to create the max and min for the window
+                y_window_list.append(self.__Y[function_segment][item])
+        self.__plot_min = min(y_window_list) * 1.3
+        self.__plot_max = max(y_window_list) * 1.3
+        self.__plot_min = min(self.__plot_min, -self.__plot_max * .4)
+        self.__plot_max = max(self.__plot_max, -self.__plot_min * .4)
+        self.__plot_left = min(self.__array) - 1
+        self.__plot_right = max(self.__array) + 1
+        for asymp in self.__asymptote_list:                                    #vertical asymptote line
+            if asymp not in self.__removed_point:
+                plt.plot([asymp,asymp], [self.__plot_min,self.__plot_max], \
+                                                             color = '#f4f4ff')
+        
+    def temp_function(self):
+        if self.__array_length_flag == 0 or  self.__domain_flag == 0:
+            return 0
+        plt.plot([-10000,10000],[0,0], color = '#f0e6ff')                      #horizontal at 0
+        for i in range(len(self.__X)):
+            plt.plot(self.__X[i], self.__Y[i], color = 'cadetblue')
+        self.__plot_zoom(self.__zoom)
+        plt.ylim(self.__plot_min , self.__plot_max)
+        plt.xlim(self.__plot_left, self.__plot_right)
+    def __plot_zoom(self, zoom):
+        width = (self.__plot_right - self.__plot_left) * .1
+        height = (self.__plot_max - self.__plot_min) * .1
+        if zoom[0] != 0 and zoom[1] != 0:                                      #provides for zooming in and out
+            self.__plot_min = self.__plot_min * zoom[0] + zoom[2] * height      #vert
+            self.__plot_max = self.__plot_max * zoom[0] + zoom[2] * height      #vert
+        self.__plot_left = self.__plot_left * zoom[1] + zoom[3] * width      #horiz
+        self.__plot_right = self.__plot_right * zoom[1]  + zoom[3] * width    #horiz
+    def print_points(self): 
+        two_points=[[10,0], [20,0], [30,0], [40,0]]
+        for x_val in range(len(two_points)):
+            two_points[x_val][1] = \
+                              self.__Y[-1][np.where(abs(np.array(self.__X[-1])\
+                                         - two_points[x_val][0])  < .01)[0][0]]
+        
+        """two_points[1][1] = \
+        self.__Y[-1][np.where(abs(np.array(self.__X[-1])- 15)  < .01)[0][0]]
+        two_points[2][1] = \
+        self.__Y[-1][np.where(abs(np.array(self.__X[-1])- 20)  < .01)[0][0]]
+        #print(self.__Y[-1][np.where(abs(np.array(self.__X[-1])- 10)  < .01)[0][0]])"""
+        print(two_points)
+
+if __name__=='__main__':
+    g = RationalFunctionGraph([[2,2,-1     ,-3,7      ,6,0 ],[5,5,0,0]])     
+    g.graph_print()
+    g.temp_function()
+    g.print_points()
+    
+    #p = np.array([1,2,3,4,11,22,33])
+    #print(p[np.where(abs(p - 20) < 5)])
+"""
+class GraphParent():
+    def __init__self, array):
+        self.array_length_flag = 1                                             #checks for appropriate input
+        self.array = array[0]                                                  #holds instructions
+        self.zoom = array[1]                                                   #allows image to be zoomed 
+        self.X = [np.linspace(-80, 80, 12001, endpoint=True)]
+        self.Y = []
+        self.Y_tester = []
+        self.Y_denominator = []
+        self.plot_min = 0
+        self.plot_max = 0
+        self.plot_left = 0
+        self.plot_right = 0
+        self.__asymptote_list = []
+        self.__removed_point = []
+        self.domain_flag = 1
+        self.q = Quicksort()
+        self.__remove_list = []
+        #------ functions in init start here  -- used to clean data and prepare for graphing
+        self.array_length_checker()
+        self.domain_checker()
+        self.divide_by_zero_remover()                                          #creates gaps where holes would be and at asymptotes
+        self.equation_builder()
+        self.plot_window() 
+        self.plot_zoom(self.zoom[0], self.zoom[1])
+    def array_length_checker(self):
+        if len(self.array) != self.array[0] + self.array[1] + 4:
+            self.array_length_flag = 0
+            print("There were too many or too few values passed into the class")
+
+    def domain_checker(self):                                                  #Our standard width is from -20 to 20.  
+        for value in self.array[3:-1]:                                         #This filters out zeros elsewhere.
+            if value > 20 or value < -20:
+                print("Roots must be between -20 and 20")
+                self.domain_flag = 0
+        return self.domain_flag
+
+    def divide_by_zero_remover(self):                                          #This removes inputs that would lead to trouboe when dividing polynomials.
+        self.__remove_list = self.array[4 + self.array[0]:]                    #list of denominator zeros
+        for matched_zero in self.array[3:3+self.array[0]]:                     #list of numerator zeros 
+            if matched_zero in self.__remove_list:
+                self.__removed_point.append(matched_zero)
+        if self.X[0][1] > 0:
+            self.__remove_list = self.q.sort(self.__remove_list)
+        for remove_value in self.__remove_list:                                #break function up so eroneous connections don't get graphed
+            local_remove_list = [x for x in self.X[0] if x == remove_value]
+            print('f      ' + str(local_remove_list))
+            self.X[0] = np.array([x for x in self.X[0] if x not in local_remove_list])
+            self.__asymptote_list.append(len([x for x in self.X[0] if x < remove_value - .012]))    
+
+    def equation_builder(self): 
+        self.Y.append(np.repeat(self.array[2], len(self.X[0]), 0))             #set an a value for the numerator's equation
+        for coefficient in range(1, self.array[0] + 1):
+            self.Y[0] = self.Y[0] * (self.X[0] - self.array[coefficient + 2])  #build up the y value from the roots i.e. x-root
+        self.Y[0] = self.polynomial_builder(self.array[2:3 + self.array[0]])   #numerator
+        self.Y_denominator = \
+                        self.polynomial_builder(self.array[3 + self.array[0]:])#denominator
+        if self.array[1] > 0:                                                  # if zero, we only make a polynomial
+            self.Y[0] = self.Y[0] / self.Y_denominator
+
+    def polynomial_builder(self, coefficients):
+        temp_y_vals = np.repeat(coefficients[0], len(self.X[0]), 0)            #set an a value for the "a" coefficient
+        for coefficient in coefficients[1:]:                                   #coefficients[0] is the degree; coefficients[1] is the "a" value
+            temp_y_vals = temp_y_vals * (self.X[0] - coefficient)
+        return(temp_y_vals)
+
+    def plot_window(self):                                                     #Find the reasonable limits for the graphing window by sampling
+        max_tracker = []
+        min_tracker = []
+        moderate_val_finder = self.q.sort(self.array[3:3 + self.array[0]])
+        print([f for f in moderate_val_finder if f not in self.__remove_list])
+         
+        #moderate_val_finder = (np.where(abs(self.Y[0] )<.3 * self.zoom[0]))[0]
+        #if len(moderate_val_finder) == 0:
+        #    moderate_val_finder = [-5,5]
+        #for value in self.Y[0] [min(moderate_val_finder)-1000: max(moderate_val_finder)+1000]:
+        #    if value > 0:
+        #        max_tracker.append (value)
+        #    else:
+        #        min_tracker.append (value)
+        max_tracker.append(10) 
+        max_tracker.append(10)
+        try:
+            self.plot_max = max(max_tracker) * 1.1
+        except:
+            self.plot_max = 0
+        try:
+            self.plot_min = min(min_tracker) * 1.1
+        except:
+            self.plot_min = -1
+        if abs(self.plot_min) > 2 * abs(self.plot_max):
+            self.plot_max = - self.plot_min * .8
+        elif abs(self.plot_max) > 2 * abs(self.plot_min):
+            self.plot_min = - self.plot_max * .8
+        plot_width = max(self.array[3:]) - min(self.array[3:])
+        self.plot_left = min(self.array[3:]) - .4 * (plot_width) + self.zoom[2]
+        self.plot_right = max(self.array[3:]) + .4 * (plot_width) + self.zoom[2]
+
+    def plot_zoom(self, a, b):
+        if a != 0 and b != 0:                                                  #provides for zooming in and out
+            self.plot_min *= a
+            self.plot_max *= a
+            self.plot_left *= b
+            self.plot_right *= b
+
+    def graph_print(self):
+        if self.domain_flag == 0 or self.array_length_flag == 0:
+            return None
+        for asymptote in self.array[4 + self.array[0]:]:
+            print('a   ' + str(asymptote))
+            if asymptote not in self.__removed_point:
+                plt.plot([asymptote, asymptote],[-10000,10000],\
+                                                           color = '#f0e6ff')
+
+
+        function_indices = [0]                                                 #This holds places in the function to break it up so 
+        asymptote_number = len(self.__asymptote_list)                          #it doesn't jump in a vertical line                         
+        self.__asymptote_list.append(len(self.X[0]))                           # This section separates pieces of the function                      
+        for item, previous in\
+                       zip (self.__asymptote_list, self.__asymptote_list[1:]): # so asymptotes don't show up where they shouldn't
+            if item - previous != 0:
+                function_indices.append(item)
+                function_indices.append(item)
+            else:
+                asymptote_number -= 1
+        function_indices.append(len(self.X[0])-1)                             
+        plt.plot([min(self.X[0]) * 30, max(self.X[0]) * 30],[0,0], color = 'coral')
+        colors = '#3d0099','#751aff'
+        print('l     ' + str(self.__removed_point))
+        for asymptote in range(0, int(len(function_indices)/2)):               #draw function near asymptotes up and down so they're recognizable
+            print('p      ' +str(asymptote))
+            if round(self.X[0][function_indices[2*asymptote]],0) not in (self.__removed_point + [-80]):
+                self.Y[0][function_indices[2*asymptote]] = self.Y[0][function_indices[2*asymptote]] * 300 * self.zoom[0] * self.array[0]**2
+            if round(self.X[0][function_indices[2*asymptote+1]],0) not in (self.__removed_point +[80]):
+                self.Y[0][function_indices[2*asymptote+1]-1] = self.Y[0][function_indices[2*asymptote+1]-1] * 300 * self.zoom[0] * self.array[0]**2
+            plt.plot(self.X[0][function_indices[2*asymptote]:function_indices[2*asymptote+1]], self.Y[0][function_indices[2*asymptote]:function_indices[2*asymptote+1]], color = colors[asymptote%2])
+        print('self     ' +str(self.__removed_point))
+        plt.ylim(self.plot_min,self.plot_max)
+        plt.xlim(self.plot_left,self.plot_right)
+
+    def print_a_point(self):
+        point_index = 1200 + random.randrange(20) * 150
+        print([round(self.X[0][point_index]),round(self.Y[0][point_index],3)])
+
+    def Y_test_manipulator(self):
+        self.Y_tester.append([1,2,3,4])
+        self.Y_tester.append([10,20,30])
+        print(len(self.Y_tester))
+
+    
+    def new_test(self):
+        function_indices = [0]
+        asymptote_number = len(self.__asymptote_list)
+        self.__asymptote_list.append(len(self.X[0]))
+        for item, previous in\
+                       zip (self.__asymptote_list, self.__asymptote_list[1:]):
+            if item - previous != 0:
+                function_indices.append(item)
+                function_indices.append(item)
+            else:
+                asymptote_number -= 1
+        function_indices.append(len(self.X[0])-1)
+        print(function_indices)
+        for asymptote in range(0, int(len(function_indices)/2)):
+            print([function_indices[2*asymptote], function_indices[2*asymptote+1]])"""
+            
+"""
+
+
+        
+            
+        
+        
+
+
+#h = GraphFromEquation([3,3,2, 2,6,1   ,1, -1,0,4])
+#h.graph_print() 
+
+
+#other_array = [x for x in range(30,48,2)]
+#print([x for x in zip(new_array,other_array)])
+#other_array = [x[1] for x in zip(new_array, other_array) if x[0]>1 and x[0]<6]
+#new_array = [x for x in new_array if x>1 and x<6]
+#print([x for x in zip(new_array,other_array)])
+
+
+
+
+if __name__=='__main__':
+    g = GraphParent([[5,4,1, 1,-1,0,10,10   ,10, -4,3,-5,6 ],[30,1,0]])
+    #g.equation_builder()
+    g.plot_zoom(1, 1)
+    g.graph_print()
+    g.print_a_point()
+    g.print_a_point()
+
+    
+    g.print_a_point()
+
+
+
+#        plt.plot(self.X[0][np.where(self.X[0] < 2.94)], self.X[0][np.where(self.X[0] < 2.94)], color = 'darkslategray')
+#        plt.plot(self.X[0][np.where(self.X[0] > 3.06)], self.X[0][np.where(self.X[0] > 3.06)], color = 'darkslategray')
+
+
+
+"""
+
+
+
+
+
+
