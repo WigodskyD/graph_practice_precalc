@@ -1,0 +1,83 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Jun 12 14:49:29 2020
+
+This class uses GraphParent and TrigGraph to create graphs for students to find
+the equations for.  It uses different parameters while trying to keep them 
+within reasonable forms
+@author: dawig
+"""
+
+import numpy as np
+import matplotlib.pyplot as plt
+import random
+from quicksort import Quicksort
+from graph_functions import RationalFunctionGraph
+from graph_trig import TrigGraph
+from datetime import datetime
+
+
+random.seed(datetime.now().strftime('%f'))
+class GraphBuilder():
+    def __init__(self, num):                                                   #1: polynomial; 2: rational funct.;  3: trig
+        self.__graph_type = num
+        self.__graph_inputs = []
+        self.__freq_list = [.5, 1/3, 4/3, 1/4, 3/4, 1/6, 5/6, 1, 2, 3, 4, 5, 6]
+        self.__amp_mid_list = [n for n in range(-3,4)] + [.5, -.5, 1.5, .1]
+        self.__trig_function = 0
+        self.__graph_object = 0
+    def create_graph(self):
+        if self.__graph_type == 3: 
+            self.__random_trig()
+        elif self.__graph_type == 1:
+            self.__random_polynomial()  
+            self.__graph_object.graph_print()
+        else:
+            print('Function not created yet')
+    def __random_trig(self):
+        self.__trig_function = int(random.random()**3 *1.3725)                 # 10% of time this gives a tan
+        if self.__trig_function == 1:                                          #tan
+            self.__graph_object = TrigGraph([1,0,1,0,3])
+            self.__graph_object.graph_print()
+        else:
+            self.__graph_inputs.append (self.__freq_list[random.randrange(13)]) # pick frequency from list
+            self.__graph_inputs.append (int(random.random()**2 *2.745) %2)
+            random.seed(int(datetime.now().strftime('%f')) + 20)
+            self.__graph_inputs.append ((self.__amp_mid_list[:3]+ self.__amp_mid_list[4:])[random.randrange(10)]) # pick amplitude
+            self.__graph_inputs.append (self.__amp_mid_list[random.randrange(11)]) # pick midline
+            random.seed(int(datetime.now().strftime('%f')) + 10)
+            self.__graph_inputs.append(int(random.random() *2) + 1)
+            print('................')
+            for i in range(20):
+                print(int(random.random() *2) + 1)
+            print(self.__graph_inputs)
+            self.__graph_object = TrigGraph(self.__graph_inputs)
+            self.__graph_object.graph_print()
+
+    def __random_polynomial(self):
+        self.__graph_inputs.append ([random.randrange(2,7),0,1])
+        for root in range(self.__graph_inputs[0][0]):
+            random.seed(int(datetime.now().strftime('%f')) + root * 5)
+            self.__graph_inputs[0].append(random.randrange(-10,10)/2)
+        self.__graph_inputs[0].append(0)                                       #This is the a value for the bottom polynomial - exists for rational function
+        self.__graph_inputs.append([.1,1,0])
+        print(self.__graph_inputs)
+        self.__graph_object = GraphParent(self.__graph_inputs)
+    def __random_rational_function(self):
+        pass
+    def test_function(self):
+        print (self.__amp_mid_list)
+
+
+if __name__=='__main__':
+ #   g = GraphParent([[2,1,3, -1,0 ,1   ,1 ],[1,1,0]])
+ #   g.graph_print()
+    
+    #c = TrigGraph([2,1,2,0,2])                #inputs are frequency, freq. contains pi, amplitude, midline, trig function
+    #c.graph_print()
+    l = GraphBuilder(3)
+    l.create_graph()
+#for i in range(100):    
+#    print(datetime.now().strftime('%f'))
+#    a = 33
+#    b = 24
