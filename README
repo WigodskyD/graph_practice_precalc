@@ -1,1 +1,3 @@
 This repository holds files to create graphs to allow precalculus students to practice finding equations for polynomial and trigonometric graphs.
+
+main_graph_builder is intended to run the other classes and allow the user to choose type of graph.
