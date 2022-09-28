@@ -4,7 +4,7 @@ Created on Tue May 26 17:03:25 2020
 @author: dawig
 """
 """
-Warning! Previous functionality of numpy has been deprecated.  This file would need to be modified to run on recent versions.
+Caution! Some abilities in numpy have been deprecated.  This would need to be modified to run on current versions.
 """
 import numpy as np
 import matplotlib.pyplot as plt
