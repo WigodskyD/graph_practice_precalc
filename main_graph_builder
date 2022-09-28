@@ -7,7 +7,9 @@ the equations for.  It uses different parameters while trying to keep them
 within reasonable forms
 @author: dawig
 """
-
+"""
+Caution! Some abilities in numpy have been deprecated.  This would need to be modified to run on current versions.
+"""
 import numpy as np
 import matplotlib.pyplot as plt
 import random
